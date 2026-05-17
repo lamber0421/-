@@ -11,17 +11,22 @@ local_storage = LocalStorage()
 st.title("記帳管家")
 st.divider()
 
-# 核心安全讀取區：完全修正死循環、重新整理不歸零
+# 核心安全讀取區：不用 ready()，改用更穩定的 None 檢查機制
 with st.spinner("正在讀取您的專屬帳本..."):
-    # 檢查瀏覽器是否已經準備好連線
-    if not local_storage.ready():
-        time.sleep(0.2)  # 沒準備好就等 0.2 秒
-        st.rerun()       # 重新整理再試一次
-        
     saved_target = local_storage.getItem("target_amount")
     saved_current = local_storage.getItem("current_amount")
     
-    # 安全地轉換成數字，第一次打開沒資料就預設是 0
+    # 如果瀏覽器還在載入中（兩者都是 None），我們就稍微等一下並重試
+    # 為了防止第一次開啟網頁的人卡死，我們給他一個安全的預設通行證
+    if saved_target is None and saved_current is None:
+        # 讓網頁稍微緩衝 0.3 秒，給瀏覽器時間把資料拿出來
+        time.sleep(0.3)
+        
+        # 再次嘗試讀取
+        saved_target = local_storage.getItem("target_amount")
+        saved_current = local_storage.getItem("current_amount")
+
+    # 安全地轉換成數字，如果真的完全沒資料（新用戶），就當作 0
     target_amount = int(saved_target) if saved_target is not None else 0
     current_amount = int(saved_current) if saved_current is not None else 0
 
@@ -32,7 +37,7 @@ new_target = st.number_input("請輸入你的存款目標", min_value=0, step=10
 if st.button("確認更新目標", type="primary"):
     local_storage.setItem("target_amount", new_target)
     st.success(f"目標已設定為：{new_target} 元")
-    time.sleep(0.5)  # 給瀏覽器一點點時間寫入晶片
+    time.sleep(0.5)  # 給瀏覽器時間寫入晶片
     st.rerun()
 
 st.divider()
@@ -62,5 +67,5 @@ else:
         new_current = current_amount + (income - expense)
         local_storage.setItem("current_amount", new_current)
         st.success("帳目已成功寫入您的手機")
-        time.sleep(0.5)  # 給瀏覽器一點點時間寫入晶片
+        time.sleep(0.5)  # 給瀏覽器時間寫入晶片
         st.rerun()
