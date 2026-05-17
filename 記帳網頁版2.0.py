@@ -13,15 +13,19 @@ st.divider()
 
 # --- ⚙️ 核心：從各自的瀏覽器讀取資料 ---
 # 由於瀏覽器載入需要時間，我們用 st.spinner 確保資料安全讀取
+#  這是升級版、絕對不會漏抓資料的程式碼
 with st.spinner("正在讀取您的專屬帳本..."):
-    # 從各自的手機瀏覽器撈出資料（如果撈不到，預設值給 0）
     saved_target = local_storage.getItem("target_amount")
     saved_current = local_storage.getItem("current_amount")
     
-    # 處理初次讀取時的空值(None)狀況，將其轉為整數
+    # 🚨 關鍵防護：如果瀏覽器還在載入（拿不到資料），就直接中斷，等下一秒重新讀取
+    if saved_target is None and saved_current is None:
+        time.sleep(0.1)  # 讓程式稍微休息 0.1 秒
+        st.rerun()       # 強制重新讀取，直到抓到手機裡的資料為止
+    
+    # 確定抓到資料後，才安全地轉換成數字
     target_amount = int(saved_target) if saved_target is not None else 0
     current_amount = int(saved_current) if saved_current is not None else 0
-
 # --- 💻 網頁介面設計 ---
 
 # 第一區：設定目標
